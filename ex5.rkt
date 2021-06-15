@@ -5,7 +5,7 @@
 (define empty?
   (lambda (lst)
     (eq? lst '())))
-    
+
 (define integers-from
   (lambda (n)
     (cons-lzl n (lambda () (integers-from (+ n 1))))))
@@ -48,6 +48,7 @@
         (head lz-lst)
         (nth (tail lz-lst) (- n 1)))))
 
+////// our code
 ;;; Q1.1
 ; Signature: append$(lst1, lst2, cont) 
 ; Type: [List * List * [List -> T]] -> T
@@ -65,12 +66,30 @@
 ; Signature: equal-trees$(tree1, tree2, succ, fail) 
 ; Type: [Tree * Tree * [Tree ->T1] * [Pair->T2] -> T1 U T2
 ; Purpose: Determines the structure identity of a given two lists, with post-processing succ/fail
-(define leaf? (lambda (x) (not (list? x))))
-(define equal-trees$ 
- (lambda (tree1 tree2 succ fail)
-   #f;@TODO
- )
-)
+(define equal-trees$
+  (lambda (tree1 tree2 succ fail)
+    (cond
+      ((and (empty? tree1) (empty? tree2))
+       (succ '()))
+      ((and (empty? tree1) (not (empty? tree2)))
+       (fail (cons tree1 tree2))
+       )
+      ((and (not (empty? tree1)) (empty? tree2))
+       (fail (cons tree1 tree2))
+       )
+      ((and (leaf? tree1) (leaf? tree2))
+       (succ (cons tree1 tree2)))
+      ((and (leaf? tree1) (not (leaf? tree2)))
+       (fail (cons tree1 tree2)))
+      ((and (not (leaf? tree1)) (leaf? tree2))
+       (fail (cons tree1 tree2)))
+      (else (equal-trees$ (car tree1) (car tree2)
+                          (lambda (suc-car)
+                            (equal-trees$ (cdr tree1) (cdr tree2)
+                                          (lambda (suc-cdr)
+                                            (succ (cons suc-car suc-cdr)))
+                                          fail))
+                          fail)))))
 
 ;;; Q2a
 ; Signature: reduce1-lzl(reducer, init, lzl) 
@@ -78,37 +97,55 @@
 ; Purpose: Returns the reduced value of the given lazy list
 (define reduce1-lzl 
   (lambda (reducer init lzl)
-   #f ;@TODO
+   (if (empty-lzl? lzl)
+       init
+       (reduce1-lzl reducer (reducer init (head lzl)) (tail lzl))
+    )
   )
-)  
+)
 
 ;;; Q2b
 ; Signature: reduce2-lzl(reducer, init, lzl, n) 
 ; Type: [T2*T1 -> T2] * T2 * LzL<T1> * Number -> T2
 ; Purpose: Returns the reduced value of the first n items in the given lazy list
-(define reduce2-lzl 
+(define reduce2-lzl
   (lambda (reducer init lzl n)
-    #f ;@TODO
+    (if (or (empty-lzl? lzl) (= n 0))
+        init
+    (reduce2-lzl reducer (reducer init (head lzl)) (tail lzl) (- n 1)))
+    )
   )
-)  
 
 ;;; Q2c
 ; Signature: reduce3-lzl(reducer, init, lzl) 
 ; Type: [T2 * T1 -> T2] * T2 * LzL<T1> -> Lzl<T2>
 ; Purpose: Returns the reduced values of the given lazy list items as a lazy list
+(define reduce3-lzl-n
+  (lambda (reducer init lzl n)
+    (cons-lzl (reduce2-lzl reducer init lzl n) (lambda () (reduce3-lzl-n reducer init lzl (+ n 1))))
+  )
+)
+
+(define one 1)
+
 (define reduce3-lzl 
   (lambda (reducer init lzl)
-    #f ;@TODO
+    (reduce3-lzl-n reducer init lzl one)
   )
-)  
- 
+)
 ;;; Q2e
 ; Signature: integers-steps-from(from,step) 
 ; Type: Number * Number -> Lzl<Number>
 ; Purpose: Returns a list of integers from 'from' with 'steps' jumps
+(define helper
+  (lambda (from step)
+    (cons-lzl from (lambda () (helper (+ from step) step)))
+  )
+)
+
 (define integers-steps-from
   (lambda (from step)
-    #f ; @TODO
+    (helper from step)
   )
 )
 
@@ -116,8 +153,15 @@
 ; Signature: generate-pi-approximations() 
 ; Type: Empty -> Lzl<Number>
 ; Purpose: Returns the approximations of pi as a lazy list
+(define helper1
+  (lambda (lzl1 lzl2)
+    (cons (* (head lzl1) (head lzl2) 8) (lambda () (helper1 (tail lzl1) (tail lzl2))))
+    )
+  )
+
 (define generate-pi-approximations
-  (lambda ()
-    #f ; @TODO
+ (lambda ()
+   (let ((lzl1 (map-lzl (lambda (x) (/ 1 x)) (integers-steps-from 1 4))) (lzl2 (map-lzl (lambda (x) (/ 1 x)) (integers-steps-from 3 4))))
+     (reduce3-lzl + 0 (helper1 lzl1 lzl2)))
    )
- )
+  )
